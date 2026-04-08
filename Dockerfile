@@ -14,4 +14,4 @@ ENV PYTHONUNBUFFERED=1 \
 # HF_TOKEN is optional — only needed when USE_LLM=True
 # Pass at runtime: docker run -e HF_TOKEN=your_token ...
 
-CMD ["python", "app.py"]
+CMD ["python", "server/app.py"]
