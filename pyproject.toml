@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agrosarthi_rl_env"
+version = "1.0.0"
+description = "OpenEnv-compatible agricultural RL environment"
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.0",
+    "openai>=1.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
