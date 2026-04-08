@@ -1,0 +1,99 @@
+name: AgroSarthiEnv
+version: "1.0.0"
+description: >
+A reinforcement learning environment simulating agricultural decision-making
+across a crop season, including soil management, disease handling, and
+environmental uncertainty.
+
+interface:
+observation:
+type: object
+properties:
+N:
+type: number
+range: [0.0, 200.0]
+description: Nitrogen content in soil (kg/ha)
+P:
+type: number
+range: [0.0, 200.0]
+description: Phosphorus content in soil (kg/ha)
+K:
+type: number
+range: [0.0, 200.0]
+description: Potassium content in soil (kg/ha)
+pH:
+type: number
+range: [0.0, 14.0]
+description: Soil pH level
+stage:
+type: integer
+range: [0, 4]
+description: "Cultivation stage: 0=LandPrep 1=Sowing 2=Vegetative 3=Flowering 4=Harvest"
+moisture:
+type: number
+range: [0.0, 500.0]
+description: Soil moisture level (mm)
+disease_risk:
+type: number
+range: [0.0, 1.0]
+description: Accumulated disease risk from environmental events
+
+action:
+type: object
+properties:
+action_type:
+type: string
+enum:
+- select_crop
+- apply_fertilizer
+- irrigate
+- amend_ph
+- complete_task
+- advance_stage
+- apply_treatment
+- wait
+crop_index:
+type: integer
+range: [1, 21]
+description: Required for select_crop
+n_delta:
+type: number
+range: [0.0, 50.0]
+description: Nitrogen to add (kg/ha)
+p_delta:
+type: number
+range: [0.0, 50.0]
+description: Phosphorus to add (kg/ha)
+k_delta:
+type: number
+range: [0.0, 50.0]
+description: Potassium to add (kg/ha)
+irrigation_mm:
+type: number
+range: [0.0, 100.0]
+description: Water to add (mm)
+task_index:
+type: integer
+range: [0, 4]
+description: Task index for completion
+
+reward:
+type: number
+range: [0.0, 1.0]
+description: >
+Step-wise reward based on action quality with penalties for poor decisions.
+Final score normalized to [0.0, 1.0].
+
+tasks:
+
+* name: easy
+  description: Select the optimal crop based on soil conditions.
+  difficulty: easy
+
+* name: medium
+  description: Optimize soil and complete stage tasks.
+  difficulty: medium
+
+* name: hard
+  description: Full-season planning with disease and environmental events.
+  difficulty: hard
