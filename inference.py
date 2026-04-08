@@ -157,7 +157,7 @@ def main():
 
             # --- Step environment ---
             try:
-                obs, reward, done, info = env.step(action)
+                obs, reward, done, truncated, info = env.step(action)
                 error = None
             except Exception as e:
                 reward = 0.0

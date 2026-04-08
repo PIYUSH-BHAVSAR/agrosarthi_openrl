@@ -110,35 +110,65 @@ score = 0.40 * yield_score + 0.30 * task_score + 0.20 * disease_score + 0.10 * e
 ```bash
 pip install -r requirements.txt
 
-# Run heuristic (no token needed)
+# Run heuristic — no token needed, fully deterministic
 python inference.py
 
 # Run with LLM (optional)
-export HF_TOKEN=your_token
-# set USE_LLM=True in inference.py
+# 1. Set USE_LLM = True in inference.py
+# 2. Export your token
+export HF_TOKEN=your_openai_compatible_token
 python inference.py
 
 # Run tests
 python test_env.py
 ```
 
-## Docker
+## Stdout Format
 
-```bash
-docker build -t agrosarthi-env .
-docker run agrosarthi-env
+The script emits exactly three line types:
 
-# With LLM
-docker run -e HF_TOKEN=your_token agrosarthi-env
 ```
+[INFO] Using model: gpt-4o-mini
+[START] task=agri-hard env=agrosarthi_env model=gpt-4o-mini
+[STEP] step=1 action=APPLY_FERTILIZER n=20.0 p=10.0 k=10.0 reward=0.10 done=false error=null
+[STEP] step=2 action=SELECT_CROP crop_index=1 reward=0.80 done=false error=null
+...
+[END] success=true steps=20 rewards=0.10,0.80,...
+```
+
+## Inference Config
+
+| Setting | Value | Notes |
+|---|---|---|
+| `TASK_NAME` | `agri-hard` | Hard task, full season |
+| `BENCHMARK` | `agrosarthi_env` | Environment name |
+| `MAX_STEPS` | `20` | Episode step limit |
+| `seed` | `42` | Fixed for reproducibility |
+| `MODEL_NAME` | `gpt-4o-mini` | Hard-locked in script |
+| `USE_LLM` | `False` | Default — heuristic only |
+| `LLM_FALLBACK` | `True` | Falls back to heuristic on LLM error |
+| `success threshold` | `score >= 0.6` | From `env.score()` |
 
 ## Environment Variables
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `API_BASE_URL` | No | `https://api.openai.com/v1` | LLM endpoint |
-| `MODEL_NAME` | No | `gpt-4o-mini` | Model identifier |
-| `HF_TOKEN` | Only if `USE_LLM=True` | — | API key |
+| `HF_TOKEN` | Only if `USE_LLM=True` | — | API key for LLM calls |
+
+> `MODEL_NAME` is hard-locked to `gpt-4o-mini` in the script and is not read from the environment.
+
+## Docker
+
+```bash
+docker build -t agrosarthi-env .
+
+# Heuristic mode (default, no token needed)
+docker run agrosarthi-env
+
+# LLM mode (set USE_LLM=True in inference.py first)
+docker run -e HF_TOKEN=your_token agrosarthi-env
+```
 
 ## Key Design Properties
 

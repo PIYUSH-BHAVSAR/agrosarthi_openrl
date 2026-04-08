@@ -94,7 +94,7 @@ class AgroEnv:
     # ------------------------------------------------------------------
     # step()
     # ------------------------------------------------------------------
-    def step(self, action: Action) -> tuple[Observation, float, bool, dict]:
+    def step(self, action: Action) -> tuple[Observation, float, bool, bool, dict]:
         if self._state is None:
             raise RuntimeError("Call reset() before step()")
 
@@ -121,8 +121,9 @@ class AgroEnv:
             obs = self._update_disease(obs, state)
             state.obs = obs
             done = state.step_count >= MAX_STEPS
+            truncated = done
             info = self._build_info(state, obs, penalty, invalid_reason, None)
-            return obs.model_copy(), round(penalty, 4), done, info
+            return obs.model_copy(), round(penalty, 4), done, truncated, info
 
         # ----------------------------------------------------------------
         # 2. Compute over-fertilization amount BEFORE applying
@@ -320,7 +321,7 @@ class AgroEnv:
             logger.debug("[AFTER] reward=%.4f done=%s breakdown=%s",
                          reward, done or truncated, breakdown)
 
-        return obs.model_copy(), round(reward, 4), done or truncated, info
+        return obs.model_copy(), round(reward, 4), done or truncated, truncated, info
 
     # ------------------------------------------------------------------
     # score()
