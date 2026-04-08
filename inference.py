@@ -5,7 +5,7 @@ from agrosarthi_rl_env.constants import STAGE_TASKS
 
 # --- ENV VARS ---
 API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
-MODEL_NAME   = "gpt-4o-mini"  # hard-locked, no env override
+MODEL_NAME   = os.getenv("MODEL_NAME", "gpt-4o-mini")
 HF_TOKEN     = os.getenv("HF_TOKEN")  # read but only used when USE_LLM=True
 
 # --- CONFIG FLAGS ---
@@ -20,8 +20,6 @@ BENCHMARK = "agrosarthi_env"
 # --- MODEL VALIDATION ---
 if USE_LLM and not MODEL_NAME.startswith("gpt"):
     raise ValueError(f"Invalid model detected: {MODEL_NAME}. Only OpenAI GPT models allowed.")
-
-print(f"[INFO] Using model: {MODEL_NAME}")
 
 # --- SAFE LLM INIT ---
 client = None
@@ -136,6 +134,7 @@ def main():
     rewards = []
     steps_taken = 0
     success = False
+    score = 0.0
 
     print(f"[START] task={TASK_NAME} env={BENCHMARK} model={MODEL_NAME}")
 
@@ -184,6 +183,7 @@ def main():
         print(
             f"[END] success={str(success).lower()} "
             f"steps={steps_taken} "
+            f"score={score:.2f} "
             f"rewards={','.join([f'{r:.2f}' for r in rewards])}"
         )
 
