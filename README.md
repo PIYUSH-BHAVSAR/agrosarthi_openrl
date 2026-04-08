@@ -1,12 +1,12 @@
 ---
-
-title: AgroSarthi RL Environment
-emoji: 🌾
-colorFrom: green
-colorTo: yellow
+title: Agrosarthi Env
+emoji: 📈
+colorFrom: gray
+colorTo: pink
 sdk: docker
 pinned: false
--------------
+---
+
 
 # AgroSarthi RL Environment
 
