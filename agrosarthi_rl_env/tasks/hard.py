@@ -60,7 +60,7 @@ class HardTask:
                 # Nullify the fertilizer action — convert to WAIT
                 action = Action(action_type=ActionType.WAIT)
 
-        obs, reward, done, info = self.env.step(action)
+        obs, reward, done, truncated, info = self.env.step(action)
         info["fertilizer_used"] = self._fertilizer_used
         info["fertilizer_remaining"] = max(0.0, FERTILIZER_BUDGET - self._fertilizer_used)
 

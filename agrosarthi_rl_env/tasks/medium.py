@@ -41,7 +41,7 @@ class MediumTask:
         return self.env.reset(init_state=MEDIUM_INIT)
 
     def step(self, action: Action):
-        obs, reward, done, info = self.env.step(action)
+        obs, reward, done, truncated, info = self.env.step(action)
 
         # Track bad advances
         if action.action_type == ActionType.ADVANCE_STAGE:

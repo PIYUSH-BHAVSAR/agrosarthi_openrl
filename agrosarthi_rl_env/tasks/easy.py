@@ -40,7 +40,7 @@ class EasyTask:
         return self.env.reset(init_state=EASY_INIT)
 
     def step(self, action: Action):
-        obs, reward, done, info = self.env.step(action)
+        obs, reward, done, truncated, info = self.env.step(action)
 
         # Override done: success if correct crop selected with high confidence
         if (action.action_type == ActionType.SELECT_CROP
