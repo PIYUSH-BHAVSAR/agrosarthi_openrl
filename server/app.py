@@ -101,10 +101,10 @@ def score():
     return {"score": env.score()}
 
 
-def serve():
+def main():
     """Entry point for [project.scripts]."""
     uvicorn.run(app, host="0.0.0.0", port=7860)
 
 
 if __name__ == "__main__":
-    serve()
+    main()
