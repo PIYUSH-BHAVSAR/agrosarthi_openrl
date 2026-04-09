@@ -1,35 +1,132 @@
 import os
+from openai import OpenAI
 from agrosarthi_rl_env import AgroEnv
 from agrosarthi_rl_env.models import Action, ActionType
 from agrosarthi_rl_env.constants import STAGE_TASKS
 
 # --- ENV VARS ---
 API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
+API_KEY      = os.getenv("API_KEY") or os.getenv("HF_TOKEN")
 MODEL_NAME   = os.getenv("MODEL_NAME", "gpt-4o-mini")
-HF_TOKEN     = os.getenv("HF_TOKEN")  # read but only used when USE_LLM=True
-
-# --- CONFIG FLAGS ---
-USE_LLM      = False  # default for submission (manual control only)
-LLM_FALLBACK = True   # always fall back to heuristic on any LLM failure
 
 # --- CONFIG ---
 MAX_STEPS = 20
 TASK_NAME = "agri-hard"
-BENCHMARK = "agrosarthi_env"
+BENCHMARK = "AgroSarthiEnv"
+USE_LLM   = bool(API_KEY)
 
-# --- MODEL VALIDATION ---
-# (skipped — USE_LLM=False, no LLM calls made)
+# --- LLM CLIENT ---
+client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY) if USE_LLM else None
 
-# --- SAFE LLM INIT ---
-client = None
-if USE_LLM:
-    from openai import OpenAI
-    client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+VALID_ACTIONS = [
+    "SELECT_CROP", "APPLY_FERTILIZER", "IRRIGATE", "AMEND_PH",
+    "COMPLETE_TASK", "ADVANCE_STAGE", "APPLY_TREATMENT", "WAIT"
+]
 
 
-# ---------------------------------------------------------------------------
-# Output helper
-# ---------------------------------------------------------------------------
+def llm_policy(obs, info: dict) -> str:
+    """Ask LLM to choose the next action. Returns action name string."""
+    prompt = (
+        "You are an expert agricultural decision agent managing a crop season.\n\n"
+        f"Current State:\n"
+        f"  Stage: {obs.stage} (0=LandPrep, 1=Sowing, 2=Vegetative, 3=Flowering, 4=Harvest)\n"
+        f"  Crop selected: {'none' if obs.crop_index == 0 else obs.crop_index}\n"
+        f"  Tasks done this stage: {obs.tasks_done}\n"
+        f"  Soil N={obs.N:.1f} P={obs.P:.1f} K={obs.K:.1f} pH={obs.ph:.1f}\n"
+        f"  Temperature={obs.temperature:.1f}°C  Moisture={obs.rainfall:.1f}mm\n"
+        f"  Disease active: {'YES' if obs.disease_active else 'no'}\n"
+        f"  Disease risk: {info.get('disease_risk', 0.0):.2f}\n"
+        f"  Event: {info.get('event', 'none')}\n\n"
+        "Available actions:\n"
+        "  SELECT_CROP      - choose crop (only in stage 0, before crop selected)\n"
+        "  APPLY_FERTILIZER - add N/P/K nutrients to soil\n"
+        "  IRRIGATE         - add water to soil\n"
+        "  AMEND_PH         - adjust soil pH\n"
+        "  COMPLETE_TASK    - complete next pending task in current stage\n"
+        "  ADVANCE_STAGE    - move to next cultivation stage\n"
+        "  APPLY_TREATMENT  - treat active disease (use immediately if disease active)\n"
+        "  WAIT             - do nothing (avoid unless necessary)\n\n"
+        "Rules:\n"
+        "- If disease is active, respond with APPLY_TREATMENT immediately.\n"
+        "- If stage=0 and no crop selected, use SELECT_CROP.\n"
+        "- Complete all tasks before advancing stage.\n"
+        "- Avoid WAIT unless no other action is valid.\n\n"
+        "Respond with ONLY the action name, nothing else."
+    )
+    response = client.chat.completions.create(
+        model=MODEL_NAME,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=10,
+        temperature=0.0,
+    )
+    return response.choices[0].message.content.strip().upper()
+
+
+def fallback_policy(obs, info: dict | None = None) -> Action:
+    """Deterministic heuristic fallback."""
+    if info is not None:
+        if info.get("event") == "drought" and obs.rainfall < 40.0:
+            return Action(action_type=ActionType.IRRIGATE, irrigation_mm=15.0)
+        if info.get("event") == "disease_outbreak" and info.get("disease_risk", 0.0) > 0.5:
+            return Action(action_type=ActionType.APPLY_TREATMENT)
+
+    if obs.disease_active == 1:
+        return Action(action_type=ActionType.APPLY_TREATMENT)
+
+    if obs.stage == 0 and obs.crop_index == 0:
+        if obs.N < 60:
+            return Action(action_type=ActionType.APPLY_FERTILIZER,
+                          n_delta=20.0, p_delta=10.0, k_delta=10.0)
+        return Action(action_type=ActionType.SELECT_CROP, crop_index=1)
+
+    stage_tasks = STAGE_TASKS[obs.stage]
+    if obs.tasks_done < len(stage_tasks):
+        return Action(action_type=ActionType.COMPLETE_TASK, task_index=obs.tasks_done)
+
+    return Action(action_type=ActionType.ADVANCE_STAGE)
+
+
+def parse_llm_action(action_text: str, obs) -> Action:
+    """Map LLM output string to a typed Action. Falls back on invalid output."""
+    text = action_text.strip().upper()
+
+    # Extract first matching valid action name
+    matched = next((a for a in VALID_ACTIONS if a in text), None)
+    if matched is None:
+        return None  # signal caller to use fallback
+
+    if matched == "SELECT_CROP":
+        return Action(action_type=ActionType.SELECT_CROP, crop_index=1)
+    elif matched == "APPLY_FERTILIZER":
+        return Action(action_type=ActionType.APPLY_FERTILIZER,
+                      n_delta=20.0, p_delta=10.0, k_delta=10.0)
+    elif matched == "IRRIGATE":
+        return Action(action_type=ActionType.IRRIGATE, irrigation_mm=15.0)
+    elif matched == "AMEND_PH":
+        return Action(action_type=ActionType.AMEND_PH, ph_delta=0.5)
+    elif matched == "COMPLETE_TASK":
+        return Action(action_type=ActionType.COMPLETE_TASK, task_index=obs.tasks_done)
+    elif matched == "ADVANCE_STAGE":
+        return Action(action_type=ActionType.ADVANCE_STAGE)
+    elif matched == "APPLY_TREATMENT":
+        return Action(action_type=ActionType.APPLY_TREATMENT)
+    elif matched == "WAIT":
+        return Action(action_type=ActionType.WAIT)
+    return None
+
+
+def choose_action(step: int, obs, info: dict) -> Action:
+    """Try LLM first, fall back to heuristic on any failure."""
+    if USE_LLM:
+        try:
+            action_text = llm_policy(obs, info)
+            action = parse_llm_action(action_text, obs)
+            if action is not None:
+                return action
+        except Exception:
+            pass
+    return fallback_policy(obs, info)
+
 
 def action_to_str(a: Action) -> str:
     parts = [a.action_type.name]
@@ -48,84 +145,6 @@ def action_to_str(a: Action) -> str:
     return " ".join(parts)
 
 
-# ---------------------------------------------------------------------------
-# Heuristic policy (default, deterministic)
-# ---------------------------------------------------------------------------
-
-def choose_action(step: int, obs, info: dict | None = None) -> Action:
-    # 0. Conditional event response
-    if info is not None:
-        if info.get("event") == "drought" and obs.rainfall < 40.0:
-            return Action(action_type=ActionType.IRRIGATE, irrigation_mm=15.0)
-        if info.get("event") == "disease_outbreak" and info.get("disease_risk", 0.0) > 0.5:
-            return Action(action_type=ActionType.APPLY_TREATMENT)
-
-    # 1. Treat active disease immediately
-    if obs.disease_active == 1:
-        return Action(action_type=ActionType.APPLY_TREATMENT)
-
-    # 2. Stage 0: fertilize then select crop
-    if obs.stage == 0 and obs.crop_index == 0:
-        if obs.N < 60:
-            return Action(action_type=ActionType.APPLY_FERTILIZER,
-                          n_delta=20.0, p_delta=10.0, k_delta=10.0)
-        return Action(action_type=ActionType.SELECT_CROP, crop_index=1)
-
-    # 3. Complete tasks in order
-    stage_tasks = STAGE_TASKS[obs.stage]
-    if obs.tasks_done < len(stage_tasks):
-        return Action(action_type=ActionType.COMPLETE_TASK, task_index=obs.tasks_done)
-
-    # 4. All tasks done — advance
-    return Action(action_type=ActionType.ADVANCE_STAGE)
-
-
-# ---------------------------------------------------------------------------
-# LLM policy (optional, experimental)
-# ---------------------------------------------------------------------------
-
-def llm_policy(obs, info: dict) -> str:
-    """Call LLM and return raw action text. Raises on any failure."""
-    prompt = (
-        "You are an agricultural decision agent.\n\n"
-        f"State: N={obs.N}, P={obs.P}, K={obs.K}, pH={obs.ph}, "
-        f"moisture={obs.rainfall}, disease_risk={info.get('disease_risk', 0.0)}, "
-        f"stage={obs.stage}, tasks_done={obs.tasks_done}, "
-        f"disease_active={obs.disease_active}\n\n"
-        "Choose ONE action from: SELECT_CROP, APPLY_FERTILIZER, IRRIGATE, "
-        "APPLY_TREATMENT, COMPLETE_TASK, ADVANCE_STAGE\n\n"
-        "Respond with ONLY the action name."
-    )
-    response = client.chat.completions.create(
-        model=MODEL_NAME,
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=16,
-        temperature=0.0,
-    )
-    return response.choices[0].message.content.strip().upper()
-
-
-def parse_llm_action(action_text: str, obs) -> Action:
-    """Convert LLM text to a typed Action. Defaults to ADVANCE_STAGE."""
-    if "SELECT_CROP" in action_text:
-        return Action(action_type=ActionType.SELECT_CROP, crop_index=1)
-    elif "APPLY_FERTILIZER" in action_text:
-        return Action(action_type=ActionType.APPLY_FERTILIZER,
-                      n_delta=20.0, p_delta=10.0, k_delta=10.0)
-    elif "IRRIGATE" in action_text:
-        return Action(action_type=ActionType.IRRIGATE, irrigation_mm=10.0)
-    elif "APPLY_TREATMENT" in action_text:
-        return Action(action_type=ActionType.APPLY_TREATMENT)
-    elif "COMPLETE_TASK" in action_text:
-        return Action(action_type=ActionType.COMPLETE_TASK, task_index=obs.tasks_done)
-    else:
-        return Action(action_type=ActionType.ADVANCE_STAGE)
-
-
-# ---------------------------------------------------------------------------
-# Main loop
-# ---------------------------------------------------------------------------
-
 def main():
     env = AgroEnv(seed=42)
     rewards = []
@@ -140,24 +159,15 @@ def main():
         info: dict = {}
 
         for step in range(1, MAX_STEPS + 1):
+            action = choose_action(step, obs, info)
 
-            # --- Action selection ---
-            if USE_LLM:
-                try:
-                    action_text = llm_policy(obs, info)
-                    action = parse_llm_action(action_text, obs)
-                except Exception:
-                    action = choose_action(step, obs, info)
-            else:
-                action = choose_action(step, obs, info)
-
-            # --- Step environment ---
             try:
                 obs, reward, done, truncated, info = env.step(action)
                 error = None
             except Exception as e:
                 reward = 0.0
                 done = True
+                truncated = False
                 error = str(e)
                 info = {}
 
@@ -165,12 +175,12 @@ def main():
             steps_taken = step
 
             print(
-                f"[STEP] step={step} action={action_to_str(action)} "
+                f"[STEP] step={step} action={action.action_type.name} "
                 f"reward={reward:.2f} done={str(done).lower()} "
                 f"error={error if error else 'null'}"
             )
 
-            if done:
+            if done or truncated:
                 break
 
         score = env.score()
@@ -180,7 +190,6 @@ def main():
         print(
             f"[END] success={str(success).lower()} "
             f"steps={steps_taken} "
-            f"score={score:.2f} "
             f"rewards={','.join([f'{r:.2f}' for r in rewards])}"
         )
 
@@ -188,5 +197,5 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception as e:
-        print(f"[END] success=false steps=0 score=0.00 rewards=")
+    except Exception:
+        print("[END] success=false steps=0 rewards=")
