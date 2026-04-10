@@ -3,6 +3,11 @@ OpenEnv-compatible REST API server for AgroSarthi RL Environment.
 Exposes: POST /reset, POST /step, GET /state, GET /health
 Runs on port 7860 for Hugging Face Spaces.
 """
+import sys
+import os
+
+# Ensure the repo root (parent of server/) is on sys.path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -99,6 +104,27 @@ def score():
     if env is None:
         raise HTTPException(status_code=400, detail="Call /reset first")
     return {"score": env.score()}
+
+
+@app.get("/grade/{task_name}")
+def grade_task(task_name: str):
+    global env
+    if env is None:
+        raise HTTPException(status_code=400, detail="Call /reset first")
+    from agrosarthi_rl_env.grader import grade
+    s = grade(env, task_name.lower())
+    return {"task": task_name.lower(), "score": s}
+
+
+@app.post("/grade")
+def grade_task_post(body: dict = None):
+    global env
+    if env is None:
+        raise HTTPException(status_code=400, detail="Call /reset first")
+    from agrosarthi_rl_env.grader import grade
+    task_name = (body or {}).get("task", "hard")
+    s = grade(env, task_name.lower())
+    return {"task": task_name.lower(), "score": s}
 
 
 def main():

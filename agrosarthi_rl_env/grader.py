@@ -86,14 +86,14 @@ def grade_hard(env) -> float:
     # Reward completing more tasks relative to steps used
     total_tasks = sum(len(s) for s in STAGE_TASKS)
     task_ratio = state.total_tasks_completed / max(total_tasks, 1)
-    step_ratio = state.step_count / max(MAX_STEPS, 1)
-    # High tasks done quickly = efficient
-    efficiency = min(1.0, task_ratio / max(step_ratio, 0.01) * 0.5)
+    step_ratio = max(state.step_count, 1) / max(MAX_STEPS, 1)  # avoid div by zero
+    efficiency = min(0.95, task_ratio / step_ratio * 0.5)  # cap below 1.0
 
     score = (
         0.5 * yield_score
         + 0.3 * (1.0 - disease_penalty)
         + 0.2 * efficiency
+        + 0.02  # baseline offset — ensures score never collapses to pure 0.3
     )
 
     return normalize_score(score)
