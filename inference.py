@@ -201,6 +201,7 @@ def main():
         print(
             f"[END] success={str(success).lower()} "
             f"steps={steps_taken} "
+            f"score={score:.2f} "
             f"rewards={','.join([f'{r:.2f}' for r in rewards])}"
         )
 
@@ -209,4 +210,4 @@ if __name__ == "__main__":
     try:
         main()
     except Exception:
-        print("[END] success=false steps=0 rewards=")
+        print("[END] success=false steps=0 score=0.00 rewards=")

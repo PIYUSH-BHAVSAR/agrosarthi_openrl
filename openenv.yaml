@@ -84,12 +84,14 @@ interface:
 
 tasks:
   - name: easy
+    grader: agrosarthi_rl_env.grader:grade_easy
     description: >
       Select the most suitable crop for the given soil and weather conditions.
       The agent must identify and choose the optimal crop within limited steps,
       demonstrating agronomic knowledge of crop-soil compatibility.
 
   - name: medium
+    grader: agrosarthi_rl_env.grader:grade_medium
     description: >
       Prepare degraded soil and complete all critical early-stage farming tasks
       efficiently. The agent must amend soil conditions, select a crop, and
@@ -97,6 +99,7 @@ tasks:
       advancing, reflecting real-world farm planning discipline.
 
   - name: hard
+    grader: agrosarthi_rl_env.grader:grade_hard
     description: >
       Manage a complete crop lifecycle across all 5 cultivation stages under
       resource constraints, stochastic disease events, and climate shocks.

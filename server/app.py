@@ -102,27 +102,34 @@ def state():
 def score():
     global env
     if env is None:
-        raise HTTPException(status_code=400, detail="Call /reset first")
+        env = AgroEnv(seed=42)
+        env.reset()
     return {"score": env.score()}
+
+
+class GradeRequest(BaseModel):
+    task: str = "hard"
+
+
+@app.post("/grade")
+def grade_task_post(req: GradeRequest = GradeRequest()):
+    global env
+    if env is None:
+        # Auto-init env so grader never fails on cold call
+        env = AgroEnv(seed=42)
+        env.reset()
+    from agrosarthi_rl_env.grader import grade
+    s = grade(env, req.task.lower())
+    return {"task": req.task.lower(), "score": s}
 
 
 @app.get("/grade/{task_name}")
 def grade_task(task_name: str):
     global env
     if env is None:
-        raise HTTPException(status_code=400, detail="Call /reset first")
+        env = AgroEnv(seed=42)
+        env.reset()
     from agrosarthi_rl_env.grader import grade
-    s = grade(env, task_name.lower())
-    return {"task": task_name.lower(), "score": s}
-
-
-@app.post("/grade")
-def grade_task_post(body: dict = None):
-    global env
-    if env is None:
-        raise HTTPException(status_code=400, detail="Call /reset first")
-    from agrosarthi_rl_env.grader import grade
-    task_name = (body or {}).get("task", "hard")
     s = grade(env, task_name.lower())
     return {"task": task_name.lower(), "score": s}
 
