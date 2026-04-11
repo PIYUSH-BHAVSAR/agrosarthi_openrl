@@ -1,13 +1,31 @@
 ---
-title: Agrosarthienv Environment Server
-emoji: 🎪
-colorFrom: pink
-colorTo: indigo
+title: AgroSarthi Env
+emoji: 🌾
+colorFrom: green
+colorTo: yellow
 sdk: docker
 pinned: false
-app_port: 8000
-base_path: /web
-tags:
+app_port: 7860
+---
+
+# AgroSarthiEnv — Agricultural RL Environment
+
+OpenEnv-compatible reinforcement learning environment simulating a full crop growing season.
+
+The agent manages soil nutrients, irrigation, disease response, and task execution across 5 cultivation stages to maximise yield.
+
+## Tasks
+
+- **easy** — Crop selection based on soil and weather conditions
+- **medium** — Farm operations planning: fertilizer, irrigation, disease prevention  
+- **hard** — Full season optimization: maximize yield under constraints
+
+## API
+
+- `POST /reset` — reset environment
+- `POST /step` — execute action
+- `GET /grade/{easy|medium|hard}` — get task score
+- `GET /health` — health check
   - openenv
 ---
 
