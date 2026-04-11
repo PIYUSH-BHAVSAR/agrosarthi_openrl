@@ -14,19 +14,156 @@ tags:
 entrypoint: "server.app:app"
 supports_concurrent_sessions: true
 
+observation_space:
+  type: object
+  description: "Agricultural field state delivered to the agent each step"
+  properties:
+    N:
+      type: number
+      minimum: 0.0
+      maximum: 200.0
+      description: "Nitrogen kg/ha"
+    P:
+      type: number
+      minimum: 0.0
+      maximum: 200.0
+      description: "Phosphorus kg/ha"
+    K:
+      type: number
+      minimum: 0.0
+      maximum: 200.0
+      description: "Potassium kg/ha"
+    ph:
+      type: number
+      minimum: 0.0
+      maximum: 14.0
+      description: "Soil pH"
+    temperature:
+      type: number
+      minimum: 5.0
+      maximum: 50.0
+      description: "Temperature in Celsius"
+    rainfall:
+      type: number
+      minimum: 0.0
+      maximum: 500.0
+      description: "Cumulative rainfall mm"
+    stage:
+      type: integer
+      minimum: 0
+      maximum: 4
+      description: "0=LandPrep 1=Sowing 2=Vegetative 3=Flowering 4=Harvest"
+    tasks_done:
+      type: integer
+      minimum: 0
+      maximum: 5
+      description: "Tasks completed in current stage"
+    disease_active:
+      type: integer
+      minimum: 0
+      maximum: 1
+      description: "0=healthy 1=disease present"
+    crop_index:
+      type: integer
+      minimum: 0
+      maximum: 21
+      description: "Selected crop index (0=none)"
+
+action_space:
+  type: object
+  description: "Agricultural management action"
+  properties:
+    action_type:
+      type: string
+      enum: [SELECT_CROP, APPLY_FERTILIZER, IRRIGATE, AMEND_PH, COMPLETE_TASK, ADVANCE_STAGE, APPLY_TREATMENT, WAIT]
+      description: "The action to perform"
+    crop_index:
+      type: integer
+      description: "Crop index [1-21] for SELECT_CROP"
+    n_delta:
+      type: number
+      description: "Nitrogen to add (kg/ha)"
+    p_delta:
+      type: number
+      description: "Phosphorus to add (kg/ha)"
+    k_delta:
+      type: number
+      description: "Potassium to add (kg/ha)"
+    irrigation_mm:
+      type: number
+      description: "Water to add (mm)"
+    ph_delta:
+      type: number
+      description: "pH adjustment"
+    task_index:
+      type: integer
+      description: "Task index [0-4] for COMPLETE_TASK"
+
 tasks:
-  - id: "easy"
+  - id: easy
     name: "Task 1: Crop Selection"
-    description: "Select the most suitable crop based on soil and weather conditions."
-    difficulty: "easy"
-    grader: "agrosarthi_rl_env.grader:grade"
-  - id: "medium"
+    description: >
+      Given soil and climate conditions already optimal for one crop,
+      the agent must identify and select the correct crop within 5 steps.
+      Success requires crop suitability score >= 0.75.
+    difficulty: easy
+    difficulty_score: 1
+    max_steps: 5
+    win_condition: "SELECT_CROP with suitability_score >= 0.75"
+    expected_score: 1.0
+    grader: "GET /grade/easy"
+
+  - id: medium
     name: "Task 2: Farm Operations Planning"
-    description: "Amend soil, select crop, and complete high-priority cultivation tasks."
-    difficulty: "medium"
-    grader: "agrosarthi_rl_env.grader:grade"
-  - id: "hard"
+    description: >
+      Starting from degraded soil, the agent must amend nutrients and pH,
+      select a suitable crop, and complete all high-importance tasks in
+      Land Prep and Sowing stages before advancing to Vegetative stage.
+    difficulty: medium
+    difficulty_score: 2
+    max_steps: 25
+    win_condition: "Reach stage 2 with all high-priority tasks completed"
+    expected_score: 1.0
+    grader: "GET /grade/medium"
+
+  - id: hard
     name: "Task 3: Full Season Optimization"
-    description: "Manage complete 5-stage crop lifecycle to maximise yield under constraints."
-    difficulty: "hard"
-    grader: "agrosarthi_rl_env.grader:grade"
+    description: >
+      Manage a complete 5-stage crop growing season under fertilizer budget
+      constraints and disease pressure. Balance soil amendments, task completion,
+      disease treatment, and stage progression to maximize final yield score >= 0.65.
+    difficulty: hard
+    difficulty_score: 3
+    max_steps: 60
+    win_condition: "Complete full season with score >= 0.65"
+    expected_score: 1.0
+    grader: "GET /grade/hard"
+
+reward_design:
+  type: shaped
+  description: >
+    Step-wise shaped rewards with terminal bonus. Correct crop selection,
+    task completion by priority, disease treatment timing, and stage advancement
+    all contribute. Penalties for skipping high-priority tasks, untreated disease,
+    nutrient collapse, and over-fertilization.
+
+baseline:
+  script: "inference.py"
+  scores:
+    easy: 0.85
+    medium: 0.70
+    hard: 0.65
+
+deployment:
+  platform: huggingface_spaces
+  space_id: "pylord/AgroSarthiEnv-v2"
+  sdk: docker
+  port: 7860
+  health_endpoint: "/health"
+  api_endpoints:
+    reset: "POST /reset"
+    step: "POST /step"
+    state: "GET /state"
+    grade_easy: "GET /grade/easy"
+    grade_medium: "GET /grade/medium"
+    grade_hard: "GET /grade/hard"
