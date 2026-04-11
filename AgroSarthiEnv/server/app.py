@@ -15,8 +15,12 @@ except (ModuleNotFoundError, ImportError):
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+# Singleton environment instance — shared across all HTTP requests so that
+# reset() state is preserved between /reset and /step calls.
+_singleton_env = AgrosarthienvEnvironment()
+
 app = create_app(
-    AgrosarthienvEnvironment,
+    lambda: _singleton_env,
     AgroSarthiEnvAction,
     AgroSarthiEnvObservation,
     env_name="AgroSarthiEnv",
@@ -30,8 +34,9 @@ _grade_env = None
 def _ensure_grade_env():
     global _grade_env
     if _grade_env is None:
-        _grade_env = AgrosarthienvEnvironment()
-        _grade_env.reset()
+        _grade_env = _singleton_env
+        if _grade_env._env._state is None:
+            _grade_env.reset()
     return _grade_env
 
 
