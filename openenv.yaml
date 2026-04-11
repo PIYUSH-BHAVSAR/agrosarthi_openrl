@@ -1,19 +1,35 @@
 spec_version: 1
-name: AgroSarthiEnv
+name: "AgroSarthiEnv"
+version: "1.0.0"
+description: "Agricultural RL environment simulating a full crop growing season. The agent manages soil nutrients, irrigation, disease response, and task execution across 5 cultivation stages to maximise yield."
 type: space
 runtime: fastapi
 app: server.app:app
 port: 7860
+authors:
+  - "AgroSarthi Team"
+tags:
+  - agriculture
+  - rl
+  - crop-management
+  - text-based
+  - decision-making
+entrypoint: "server.app:app"
+supports_concurrent_sessions: false
 
 tasks:
-  - id: easy
-    name: easy
-    grader: agrosarthi_rl_env.grader:grade_easy
-
-  - id: medium
-    name: medium
-    grader: agrosarthi_rl_env.grader:grade_medium
-
-  - id: hard
-    name: hard
-    grader: agrosarthi_rl_env.grader:grade_hard
+  - id: "easy"
+    name: "Task 1: Crop Selection"
+    description: "Select the most suitable crop based on current soil nutrients, pH, temperature, and rainfall conditions within limited steps."
+    difficulty: "easy"
+    grader: "agrosarthi_rl_env.grader:grade"
+  - id: "medium"
+    name: "Task 2: Farm Operations Planning"
+    description: "Amend degraded soil, select a crop, and complete all high-priority cultivation tasks in Land Preparation and Sowing stages before advancing."
+    difficulty: "medium"
+    grader: "agrosarthi_rl_env.grader:grade"
+  - id: "hard"
+    name: "Task 3: Full Season Optimization"
+    description: "Manage a complete 5-stage crop lifecycle under fertilizer budget constraints, stochastic disease events, and climate shocks to maximise final yield score."
+    difficulty: "hard"
+    grader: "agrosarthi_rl_env.grader:grade"
