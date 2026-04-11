@@ -111,7 +111,7 @@ tasks:
     max_steps: 5
     win_condition: "SELECT_CROP with suitability_score >= 0.75"
     expected_score: 1.0
-    grader: "GET /grade/easy"
+    grader: "agrosarthi_rl_env.grader:grade_easy"
 
   - id: medium
     name: "Task 2: Farm Operations Planning"
@@ -124,7 +124,7 @@ tasks:
     max_steps: 25
     win_condition: "Reach stage 2 with all high-priority tasks completed"
     expected_score: 1.0
-    grader: "GET /grade/medium"
+    grader: "agrosarthi_rl_env.grader:grade_medium"
 
   - id: hard
     name: "Task 3: Full Season Optimization"
@@ -137,7 +137,7 @@ tasks:
     max_steps: 60
     win_condition: "Complete full season with score >= 0.65"
     expected_score: 1.0
-    grader: "GET /grade/hard"
+    grader: "agrosarthi_rl_env.grader:grade_hard"
 
 reward_design:
   type: shaped

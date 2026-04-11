@@ -13,13 +13,9 @@ def grade_easy(env) -> float:
     Higher suitability → higher score. Smooth, not binary.
     """
     if env._state is None:
-        return normalize_score(0.15)  # baseline — env exists but no steps taken
+        return normalize_score(0.01)
 
     suitability = env._state.crop_confidence  # float in [0.0, 1.0]
-
-    if suitability == 0.0:
-        # No crop selected yet — return baseline reflecting env is ready
-        return normalize_score(0.15)
 
     # Smooth score: weighted blend of raw suitability + threshold bonus
     threshold_bonus = 1.0 if suitability > 0.7 else (suitability / 0.7) * 0.3
