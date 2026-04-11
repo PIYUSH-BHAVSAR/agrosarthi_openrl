@@ -5,6 +5,11 @@ colorFrom: green
 colorTo: yellow
 sdk: docker
 pinned: false
+secrets:
+  - API_BASE_URL
+  - API_KEY
+  - HF_TOKEN
+  - MODEL_NAME
 ---
 
 # AgroSarthiEnv
