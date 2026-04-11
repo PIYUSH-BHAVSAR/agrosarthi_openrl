@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openenv-AgroSarthiEnv"
+version = "1.0.0"
+description = "Agricultural RL environment for OpenEnv — crop lifecycle decision making"
+requires-python = ">=3.10"
+dependencies = [
+    "openenv-core[core]>=0.2.2",
+    "pydantic>=2.0",
+    "openai>=1.0",
+    "fastapi>=0.115.0",
+    "uvicorn>=0.24.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+[project.scripts]
+server = "AgroSarthiEnv.server.app:main"
+
+[tool.setuptools]
+include-package-data = true
+packages = [
+    "AgroSarthiEnv",
+    "AgroSarthiEnv.server",
+    "agrosarthi_rl_env",
+    "agrosarthi_rl_env.tasks",
+]
+package-dir = { "AgroSarthiEnv" = ".", "AgroSarthiEnv.server" = "server" }

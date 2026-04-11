@@ -1,0 +1,32 @@
+spec_version: 1
+name: AgroSarthiEnv
+type: space
+runtime: fastapi
+app: server.app:app
+port: 7860
+authors:
+  - "AgroSarthi Team"
+tags:
+  - agriculture
+  - rl
+  - crop-management
+  - text-based
+entrypoint: "server.app:app"
+supports_concurrent_sessions: true
+
+tasks:
+  - id: "easy"
+    name: "Task 1: Crop Selection"
+    description: "Select the most suitable crop based on soil and weather conditions."
+    difficulty: "easy"
+    grader: "agrosarthi_rl_env.grader:grade"
+  - id: "medium"
+    name: "Task 2: Farm Operations Planning"
+    description: "Amend soil, select crop, and complete high-priority cultivation tasks."
+    difficulty: "medium"
+    grader: "agrosarthi_rl_env.grader:grade"
+  - id: "hard"
+    name: "Task 3: Full Season Optimization"
+    description: "Manage complete 5-stage crop lifecycle to maximise yield under constraints."
+    difficulty: "hard"
+    grader: "agrosarthi_rl_env.grader:grade"
