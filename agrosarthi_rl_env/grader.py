@@ -99,11 +99,18 @@ def grade_hard(env) -> float:
     return normalize_score(score)
 
 
-def grade(env, task_name: str = "hard") -> float:
-    """Dispatch to task-specific grader. Returns float in (0.0, 1.0)."""
-    if task_name == "easy":
+def grade(env, task_name: str = "hard", task: str = None, **kwargs) -> float:
+    """
+    Universal dispatcher. Supports all invocation styles:
+      grade(env)
+      grade(env, "easy")
+      grade(env, task_name="medium")
+      grade(env, task="hard")
+    """
+    resolved = (task or task_name or "hard").lower()
+    if resolved == "easy":
         return grade_easy(env)
-    elif task_name == "medium":
+    elif resolved == "medium":
         return grade_medium(env)
     else:
         return grade_hard(env)
