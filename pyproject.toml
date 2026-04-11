@@ -3,7 +3,7 @@ requires = ["setuptools>=65.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "agrosarthi_rl_env"
+name = "agrosarthi-rl-env"
 version = "1.0.0"
 description = "OpenEnv-compatible agricultural RL environment"
 requires-python = ">=3.10"
@@ -18,5 +18,7 @@ dependencies = [
 [project.scripts]
 server = "server.app:main"
 
-[tool.setuptools.packages.find]
-where = ["."]
+[tool.setuptools]
+include-package-data = true
+packages = ["agrosarthi_rl_env", "agrosarthi_rl_env.tasks", "server"]
+package-dir = { "server" = "server" }

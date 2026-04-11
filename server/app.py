@@ -1,6 +1,6 @@
 """
 OpenEnv-compatible REST API server for AgroSarthi RL Environment.
-Exposes: POST /reset, POST /step, GET /state, GET /health
+Exposes: POST /reset, POST /step, GET /state, GET /health, GET+POST /grade
 Runs on port 7860 for Hugging Face Spaces.
 """
 import sys
@@ -8,6 +8,7 @@ import os
 
 # Ensure the repo root (parent of server/) is on sys.path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -15,19 +16,31 @@ import uvicorn
 
 from agrosarthi_rl_env import AgroEnv
 from agrosarthi_rl_env.models import Action, ActionType
+from agrosarthi_rl_env.grader import grade as _grade
 
 app = FastAPI(title="AgroSarthi RL Environment", version="1.0.0")
 
-# Global env instance (single-session; HF Spaces is single-container)
 env: Optional[AgroEnv] = None
 
 
+def ensure_env():
+    global env
+    if env is None:
+        env = AgroEnv(seed=42)
+        env.reset()
+
+
+def normalize_score(score: float) -> float:
+    return round(max(0.01, min(0.99, float(score))), 4)
+
+
 # ---------------------------------------------------------------------------
-# Request / Response schemas
+# Request schemas
 # ---------------------------------------------------------------------------
 
 class ResetRequest(BaseModel):
     seed: int = 42
+
 
 class StepRequest(BaseModel):
     action_type: str
@@ -38,6 +51,10 @@ class StepRequest(BaseModel):
     irrigation_mm: Optional[float] = None
     ph_delta: Optional[float] = None
     task_index: Optional[int] = None
+
+
+class GradeRequest(BaseModel):
+    task: str = "hard"
 
 
 # ---------------------------------------------------------------------------
@@ -59,10 +76,7 @@ def reset(req: ResetRequest = ResetRequest()):
 
 @app.post("/step")
 def step(req: StepRequest):
-    global env
-    if env is None:
-        raise HTTPException(status_code=400, detail="Call /reset first")
-
+    ensure_env()
     try:
         atype = ActionType[req.action_type.upper()]
     except KeyError:
@@ -78,7 +92,6 @@ def step(req: StepRequest):
         ph_delta=req.ph_delta,
         task_index=req.task_index,
     )
-
     obs, reward, done, truncated, info = env.step(action)
     return {
         "observation": obs.model_dump(),
@@ -91,51 +104,35 @@ def step(req: StepRequest):
 
 @app.get("/state")
 def state():
-    global env
-    if env is None:
-        raise HTTPException(status_code=400, detail="Call /reset first")
-    obs = env.state()
-    return obs.model_dump()
+    ensure_env()
+    return env.state().model_dump()
 
 
 @app.get("/score")
 def score():
-    global env
-    if env is None:
-        env = AgroEnv(seed=42)
-        env.reset()
+    ensure_env()
     return {"score": env.score()}
 
 
-class GradeRequest(BaseModel):
-    task: str = "hard"
+@app.get("/grade/{task_name}")
+def grade_get(task_name: str):
+    ensure_env()
+    s = normalize_score(_grade(env, task_name.lower()))
+    return {"score": s}
 
 
 @app.post("/grade")
-def grade_task_post(req: GradeRequest = GradeRequest()):
-    global env
-    if env is None:
-        # Auto-init env so grader never fails on cold call
-        env = AgroEnv(seed=42)
-        env.reset()
-    from agrosarthi_rl_env.grader import grade
-    s = grade(env, req.task.lower())
-    return {"task": req.task.lower(), "score": s}
+def grade_post(body: GradeRequest = GradeRequest()):
+    ensure_env()
+    s = normalize_score(_grade(env, body.task.lower()))
+    return {"score": s}
 
 
-@app.get("/grade/{task_name}")
-def grade_task(task_name: str):
-    global env
-    if env is None:
-        env = AgroEnv(seed=42)
-        env.reset()
-    from agrosarthi_rl_env.grader import grade
-    s = grade(env, task_name.lower())
-    return {"task": task_name.lower(), "score": s}
-
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
 
 def main():
-    """Entry point for [project.scripts]."""
     uvicorn.run(app, host="0.0.0.0", port=7860)
 
 
