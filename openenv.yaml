@@ -4,3 +4,11 @@ type: space
 runtime: fastapi
 app: server.app:app
 port: 7860
+
+tasks:
+  - name: easy
+    grader: agrosarthi_rl_env.grader:grade_easy
+  - name: medium
+    grader: agrosarthi_rl_env.grader:grade_medium
+  - name: hard
+    grader: agrosarthi_rl_env.grader:grade_hard

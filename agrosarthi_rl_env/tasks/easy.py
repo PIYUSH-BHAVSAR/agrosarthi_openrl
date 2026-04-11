@@ -51,7 +51,7 @@ class EasyTask:
             done = True
             info["task_result"] = "failure"
 
-        return obs, reward, done, info
+        return obs, reward, done, truncated, info
 
     def success_condition(self, info: dict) -> bool:
         return info.get("task_result") == "success"
