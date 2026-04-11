@@ -5,7 +5,6 @@ colorFrom: green
 colorTo: yellow
 sdk: docker
 pinned: false
-app_port: 7860
 ---
 
 # AgroSarthiEnv
@@ -28,14 +27,3 @@ The agent manages soil nutrients, irrigation, disease response, and task executi
 - `GET /grade/medium` — medium task score
 - `GET /grade/hard` — hard task score
 - `GET /health` — health check
-- `GET /docs` — API documentation
-
-## Quick Start
-
-```python
-from AgroSarthiEnv import AgroSarthiEnvEnv, AgroSarthiEnvAction
-
-env = AgroSarthiEnvEnv(base_url="https://pylord-agrosarthi-env.hf.space")
-result = env.reset()
-result = env.step(AgroSarthiEnvAction(action_type="SELECT_CROP", crop_index=1))
-```
