@@ -6,9 +6,14 @@ app: server.app:app
 port: 7860
 
 tasks:
-  - name: easy
+  - id: easy
+    name: easy
     grader: agrosarthi_rl_env.grader:grade_easy
-  - name: medium
+
+  - id: medium
+    name: medium
     grader: agrosarthi_rl_env.grader:grade_medium
-  - name: hard
+
+  - id: hard
+    name: hard
     grader: agrosarthi_rl_env.grader:grade_hard
